@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>多主题时钟</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      transition: background 0.5s ease;
+      position: relative;
+    }
+    h1 {
+      margin-top: 50px;
+    }
+    .theme-switcher {
+      margin: 30px 0;
+    }
+    .theme-button {
+      padding: 12px 24px;
+      margin: 0 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .modern-btn { background: #607d8b; color: white; }
+    .cute-btn { background: #ff90b3; color: white; }
+    .batman-btn { background: #212121; color: #f9c349; }
+
+    .clock-box {
+      padding: 30px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      margin-bottom: 40px;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+    }
+
+    .alarm-box {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .alarm-box input[type="time"] {
+      padding: 8px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+    .alarm-box button {
+      margin: 0 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .theme-modern { background: linear-gradient(to right, #d7e1ec, #f0f4f8); color: #333; }
+    .theme-modern .clock-box {
+      background: white;
+      font-family: 'Segoe UI', sans-serif;
+      color: #333;
+    }
+
+    .theme-cute { background: linear-gradient(to right, #ffe0f0, #ffd6ec); color: #ff4081; }
+    .theme-cute .clock-box {
+      background: url('../img/pink.jpg') no-repeat center center;
+      background-size: cover;
+      border: 5px dashed #ff90b3;
+      font-family: 'Comic Sans MS', cursive;
+      color: #ff4081;
+      box-shadow: 0 0 30px rgba(249, 195, 73, 0.5);
+    }
+
+    .theme-batman {
+      background-color: #000;
+      color: #f9c349;
+    }
+    .theme-batman .clock-box {
+      background: url('../img/Batman.jpg') no-repeat center center;
+      background-size: cover;
+
+      border: 2px solid #f9c349;
+      font-family: 'Orbitron', sans-serif;
+      color: #f9c349;
+      box-shadow: 0 0 30px rgba(249, 195, 73, 0.5);
+    }
+  </style>
+</head>
+<body class="theme-modern">
+  <h1>多主题时钟切换</h1>
+  <div class="theme-switcher">
+    <button class="theme-button modern-btn" onclick="setTheme('modern')">简约高级</button>
+    <button class="theme-button cute-btn" onclick="setTheme('cute')">可爱风格</button>
+    <button class="theme-button batman-btn" onclick="setTheme('batman')">蝙蝠侠</button>
+  </div>
+
+  <div class="clock-box">
+    <h2 id="theme-title">简约高级钟表</h2>
+    <canvas id="clock" width="300" height="300"></canvas>
+  </div>
+
+  <div class="alarm-box">
+    <!-- 日期时间选择器 -->
+    <input type="datetime-local" id="alarm-datetime">
+    <!-- 是否每天重复 -->
+    <label style="margin-left:10px;">
+      <input type="checkbox" id="repeat-daily"> 每天重复
+    </label>
+
+    <!-- 铃声选择 -->
+    <br><br>
+    <select id="alarm-sound">
+      <option value="../music/very nice.mp3">🎵 very nice</option>
+      <option value="../music/a watchful guardian.mp3">🛡 a watchful guardian</option>
+      <option value="../music/DJMOUN-新世界（vivo手机铃声）.mp3">🌏 DJMOUN - 新世界</option>
+      <option value="../music/HUAWEI_15sec.mp3">📱 HUAWEI 铃声</option>
+      <option value="../music/李祥晖-小米默认铃声 (remix：小米公司铃声).mp3">📢 小米默认铃声</option>
+      <option value="../music/周杰伦-夜曲.mp3">🎤 周杰伦 - 夜曲</option>
+    </select>
+
+    <!-- 操作按钮 -->
+    <br><br>
+    <button onclick="previewSound()">试听铃声</button>
+    <button onclick="setAlarm()">设置闹钟</button>
+    <button onclick="clearAllAlarms()">关闭所有闹钟</button>
+
+    <!-- 播放器 -->
+    <audio id="alarm-audio" style="display: none;" controls>
+      <source src="../music/very nice.mp3" type="audio/mpeg" />
+      您的浏览器不支持音频播放。
+    </audio>
+
+    <!-- 已设置闹钟列表 -->
+    <div id="alarm-list" style="margin-top: 20px;">
+      <h3>⏰ 已设置的闹钟</h3>
+      <ul id="alarm-items" style="list-style:none; padding-left: 0;"></ul>
+    </div>
+  </div>
+</body>
+
+
+
+  <script>
+    let theme = 'modern';
+    function setTheme(t) {
+      theme = t;
+      document.body.className = 'theme-' + theme;
+      document.getElementById('theme-title').textContent = {
+        modern: '简约高级钟表',
+        cute: '可爱风格时钟',
+        batman: '蝙蝠侠主题时钟'
+      }[t];
+    }
+
+    function drawClock() {
+      const canvas = document.getElementById("clock");
+      const ctx = canvas.getContext("2d");
+      const radius = canvas.height / 2;
+      ctx.translate(radius, radius);
+      setInterval(() => {
+        ctx.clearRect(-radius, -radius, canvas.width, canvas.height);
+        drawFace(ctx, radius);
+        drawTickMarks(ctx, radius);
+        drawNumbers(ctx, radius);
+        drawTime(ctx, radius);
+      }, 1000);
+    }
+
+    function drawFace(ctx, radius) {
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.95, 0, 2 * Math.PI);
+      ctx.fillStyle = theme === 'cute' ? '#fff0f5' : theme === 'batman' ? 'rgba(0,0,0,0.3)' : 'white';
+      ctx.strokeStyle = theme === 'cute' ? '#ff90b3' : theme === 'batman' ? '#f9c349' : '#333';
+      ctx.fill();
+      ctx.lineWidth = radius * 0.05;
+      ctx.stroke();
+    }
+
+    function drawTickMarks(ctx, radius) {
+      for (let i = 0; i < 60; i++) {
+        const angle = i * Math.PI / 30;
+        const len = i % 5 === 0 ? radius * 0.1 : radius * 0.05;
+        ctx.beginPath();
+        ctx.lineWidth = i % 5 === 0 ? 2 : 1;
+        ctx.strokeStyle = theme === 'batman' ? '#f9c349' : theme === 'cute' ? '#ff90b3' : '#666';
+        ctx.moveTo(Math.cos(angle) * (radius * 0.9), Math.sin(angle) * (radius * 0.9));
+        ctx.lineTo(Math.cos(angle) * (radius * 0.9 - len), Math.sin(angle) * (radius * 0.9 - len));
+        ctx.stroke();
+      }
+    }
+
+    function drawNumbers(ctx, radius) {
+      ctx.font = radius * 0.15 + "px Arial";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      for (let num = 1; num <= 12; num++) {
+        const ang = num * Math.PI / 6;
+        ctx.rotate(ang);
+        ctx.translate(0, -radius * 0.75);
+        ctx.rotate(-ang);
+        ctx.fillStyle = theme === 'batman' ? '#f9c349' : theme === 'cute' ? '#ff4081' : '#000';
+        ctx.fillText(num.toString(), 0, 0);
+        ctx.rotate(ang);
+        ctx.translate(0, radius * 0.75);
+        ctx.rotate(-ang);
+      }
+    }
+       function previewSound() {
+  const audio = document.getElementById("alarm-audio");
+  const selectedSound = document.getElementById("alarm-sound").value;
+  audio.src = selectedSound;
+  audio.play();
+}
+
+    function drawTime(ctx, radius) {
+      const now = new Date();
+      let hour = now.getHours();
+      let minute = now.getMinutes();
+      let second = now.getSeconds();
+      hour = hour % 12;
+      hour = (hour * Math.PI / 6) + (minute * Math.PI / (6 * 60));
+      drawHand(ctx, hour, radius * 0.5, radius * 0.07, theme === 'batman' ? '#f9c349' : '#333');
+      minute = (minute * Math.PI / 30);
+      drawHand(ctx, minute, radius * 0.8, radius * 0.07, theme === 'batman' ? '#f9c349' : '#333');
+      let secondColor = theme === 'batman' ? '#f9c349' : theme === 'cute' ? '#ff4081' : 'red';
+      second = (second * Math.PI / 30);
+      drawHand(ctx, second, radius * 0.9, radius * 0.02, secondColor, true);
+    }
+
+    function drawHand(ctx, pos, length, width, color = '#333', glow = false) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = color;
+      if (glow) {
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 10;
+      }
+      ctx.moveTo(0, 0);
+      ctx.rotate(pos);
+      ctx.lineTo(0, -length);
+      ctx.stroke();
+      ctx.rotate(-pos);
+      ctx.restore();
+    }
+
+    let alarmTime = null;
+    let alarmTimeout = null;
+
+    function setAlarm() {
+  const input = document.getElementById("alarm-datetime").value;
+  const repeat = document.getElementById("repeat-daily").checked;
+  const selectedSound = document.getElementById("alarm-sound").value;
+
+  if (!input) {
+    alert("请选择日期和时间！");
+    return;
+  }
+
+  const alarm = {
+    id: Date.now(), // 唯一 ID
+    time: input,
+    repeat: repeat,
+    sound: selectedSound,
+  };
+
+  alarms.push(alarm);
+  renderAlarms();
+}
+
+
+
+    let alarms = [];
+
+function setAlarm() {
+  const input = document.getElementById("alarm-datetime").value;
+  const repeat = document.getElementById("repeat-daily").checked;
+  const selectedSound = document.getElementById("alarm-sound").value;
+
+  if (!input) {
+    alert("请选择日期和时间！");
+    return;
+  }
+
+  const alarm = {
+    id: Date.now(),  // 唯一标识
+    time: input,
+    repeat: repeat,
+    sound: selectedSound,
+  };
+
+  alarms.push(alarm);
+  renderAlarms(); // 展示
+}
+
+
+function renderAlarms() {
+  const list = document.getElementById("alarm-items");
+  list.innerHTML = ""; // 清空列表再重建
+
+  alarms.forEach(alarm => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      🕒 ${alarm.time} ${alarm.repeat ? "(每天重复)" : ""}
+      <button onclick="deleteAlarm(${alarm.id})" style="margin-left:10px;">删除</button>
+    `;
+    list.appendChild(li);
+  });
+}
+
+
+function deleteAlarm(id) {
+  alarms = alarms.filter(alarm => alarm.id !== id);
+  renderAlarms();
+}
+
+
+function checkAlarms() {
+  const now = new Date();
+  const hhmm = now.toTimeString().slice(0, 5);
+  const ymd = now.toISOString().slice(0, 10);
+
+  alarms.forEach(alarm => {
+    const alarmTime = alarm.time.slice(11, 16);
+    const alarmDate = alarm.time.slice(0, 10);
+
+    if (
+      (alarm.repeat && alarmTime === hhmm) ||
+      (!alarm.repeat && alarmDate === ymd && alarmTime === hhmm)
+    ) {
+      playSound(alarm.sound);
+    }
+  });
+}
+
+setInterval(checkAlarms, 1000);
+function playSound(url) {
+  const audio = document.getElementById("alarm-audio");
+  audio.src = url;
+  audio.play();
+}
+
+    function clearAlarm() {
+      alarmTime = null;
+      clearInterval(alarmTimeout);
+      document.getElementById("alarm-audio").pause();
+      document.getElementById("alarm-audio").currentTime = 0;
+      alert("闹钟已关闭");
+    }
+
+    drawClock();
+  </script>
+</body>
+</html>
+
